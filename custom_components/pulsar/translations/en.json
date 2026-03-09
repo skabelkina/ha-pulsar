@@ -1,123 +1,265 @@
 {
-    "config": {
-        "abort": {
-            "address_already_configured": "Device with this address is already configured",
-            "name_already_exists": "Device with this name is already exists"
-        },
-        "error": {
-            "cannot_connect": "Failed to connect"
-        },
-        "flow_title": "{name}",
-        "step": {
-            "choose_serial_port": {
-                "data": {
-                    "device_or_address": "Serial Device Path"
-                },
-                "description": "Select the serial port for your meters",
-                "title": "Select a Serial Port"
-            },
-            "manual_port_config": {
-                "data": {
-                    "device_or_address": "Serial device path or IP address"
-                },
-                "description": "Enter the serial port settings",
-                "title": "Serial Port Settings"
-            },
-            "configure_device": {
-                "data": {
-                    "name": "Enter name for device",
-                    "serial_id": "Enter device serial number",
-                    "type": "Choose type of device"
-                },
-                "description": "Enter the device settings",
-                "title": "Add device"
-            },
-            "add_menu": {
-                "menu_options":{
-                    "configure_device": "Add device",
-                    "complete": "Complete"
-                },
-                "description": "You can add additional device or complete setup",
-                "title": "Add device"
-            }
-        }
+  "config": {
+    "abort": {
+      "address_already_configured": "Device with this address is already configured",
+      "name_already_exists": "Device with this name already exists"
     },
-    "options": {
-        "flow_title": "{name}",
-        "abort": {
-            "address_already_configured": "Device with this address is already configured",
-            "name_already_exists": "Device with this name is already exists"
-        },
-        "step": {
-            "yaml_import": {
-                "title": "Not Supported",
-                "description": "Options cannot be edited when configured via YAML."
-            },
-            "configure_menu": {
-                "title": "Pulse Configuration",
-                "description": "Please select the desired action.",
-                "menu_options": {
-                    "configure_device": "Add a new device",
-                    "edit_device": "Edit a device",
-                    "change_port": "Change port settings"
-                }
-            },
-            "choose_serial_port": {
-                "data": {
-                    "device_or_address": "Serial Device Path"
-                },
-                "description": "Select the serial port for your Zigbee radio",
-                "title": "Select a Serial Port"
-            },
-            "manual_port_config": {
-                "data": {
-                    "device_or_address": "Serial device path or IP address"
-                },
-                "description": "Enter the serial port settings",
-                "title": "Serial Port Settings"
-            },
-            "configure_device": {
-                "data": {
-                    "name": "Enter name for device",
-                    "serial_id": "Enter device serial number",
-                    "type": "Choose type of device"
-                },
-                "description": "Enter the device settings",
-                "title": "Add device"
-            },
-            "edit_device": {
-                "title": "Edit a new device",
-                "description": "Pick the configured device you wish to edit.",
-                "data": {
-                    "selected_device": "Configured Devices"
-                }
-            },
-            "change_port": {
-                "title": "Edit port settings",
-                "description": "You can change port settings."
-            },
-            "add_menu": {
-                "menu_options":{
-                    "configure_device": "Add device",
-                    "complete": "Complete"
-                },
-                "description": "You can add additional device or complete setup",
-                "title": "Add device"
-            }
-        }
+    "error": {
+      "cannot_connect": "Failed to connect"
     },
-    "entity": {
-        "sensor": {
-            "current_water_consumption_ch1": {
-                "name": "Current water consumption"
-            },
-            "system_time": {
-                "name": "System time"
-            },
-            "device_temperature": {
-                "name": "Temperature of meter"
-            }
-
-        }
+    "flow_title": "{name}",
+    "step": {
+      "choose_serial_port": {
+        "data": {
+          "device_or_address": "Serial Device Path"
+        },
+        "description": "Select the serial port for your meters",
+        "title": "Select a Serial Port"
+      },
+      "manual_port_config": {
+        "data": {
+          "device_or_address": "Serial device path or IP address",
+          "scan_interval": "Scan interval (seconds)"
+        },
+        "description": "Enter the serial port settings",
+        "title": "Serial Port Settings"
+      },
+      "configure_device": {
+        "data": {
+          "name": "Enter name for device",
+          "serial_id": "Enter device serial number",
+          "type": "Choose type of device"
+        },
+        "description": "Enter the device settings",
+        "title": "Add device"
+      },
+      "add_menu": {
+        "menu_options": {
+          "configure_device": "Add device",
+          "complete": "Complete"
+        },
+        "description": "You can add additional device or complete setup",
+        "title": "Add device"
+      }
     }
+  },
+  "options": {
+    "flow_title": "{name}",
+    "abort": {
+      "address_already_configured": "Device with this address is already configured",
+      "name_already_exists": "Device with this name already exists"
+    },
+    "step": {
+      "yaml_import": {
+        "title": "Not Supported",
+        "description": "Options cannot be edited when configured via YAML."
+      },
+      "configure_menu": {
+        "title": "Configuration",
+        "description": "Please select the desired action",
+        "menu_options": {
+          "configure_device": "Add device",
+          "edit_device": "Edit device",
+          "change_port": "Change port settings",
+          "scan_interval": "Scan interval"
+        }
+      },
+      "choose_serial_port": {
+        "data": {
+          "device_or_address": "Serial Device Path"
+        },
+        "description": "Select the serial port for your meters",
+        "title": "Select a Serial Port"
+      },
+      "manual_port_config": {
+        "data": {
+          "device_or_address": "Serial device path or IP address",
+          "scan_interval": "Scan interval (seconds)"
+        },
+        "description": "Enter the serial port settings",
+        "title": "Serial Port Settings"
+      },
+      "configure_device": {
+        "data": {
+          "name": "Enter name for device",
+          "serial_id": "Enter device serial number",
+          "type": "Choose type of device"
+        },
+        "description": "Enter the device settings",
+        "title": "Add device"
+      },
+      "edit_device": {
+        "title": "Edit device",
+        "description": "Pick the configured device you wish to edit",
+        "data": {
+          "selected_device": "Device to edit"
+        }
+      },
+      "change_port": {
+        "title": "Change port settings",
+        "description": "You can change port settings"
+      },
+      "scan_interval": {
+        "title": "Scan Interval",
+        "description": "Configure the scan interval for device updates",
+        "data": {
+          "scan_interval": "Scan interval (seconds)"
+        }
+      },
+      "add_menu": {
+        "menu_options": {
+          "configure_device": "Add device",
+          "complete": "Complete"
+        },
+        "description": "You can add additional device or complete setup",
+        "title": "Add device"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "volume": {
+        "name": "Volume"
+      },
+      "volume_total": {
+        "name": "Total volume"
+      },
+      "volume_cold": {
+        "name": "Cold water volume"
+      },
+      "volume_hot": {
+        "name": "Hot water volume"
+      },
+      "volume_forward": {
+        "name": "Forward volume"
+      },
+      "volume_reverse": {
+        "name": "Reverse volume"
+      },
+      "volume_supply": {
+        "name": "Supply volume"
+      },
+      "volume_return": {
+        "name": "Return volume"
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "device_temperature": {
+        "name": "Device temperature"
+      },
+      "temp_supply": {
+        "name": "Supply temperature"
+      },
+      "temp_return": {
+        "name": "Return temperature"
+      },
+      "temp_diff": {
+        "name": "Temperature difference"
+      },
+      "environment_temp": {
+        "name": "Environment temperature"
+      },
+      "battery_voltage": {
+        "name": "Battery voltage"
+      },
+      "error_flags": {
+        "name": "Error flags"
+      },
+      "device_date_time": {
+        "name": "Device date/time"
+      },
+      "flow_rate": {
+        "name": "Flow rate"
+      },
+      "flow_threshold_min": {
+        "name": "Flow threshold minimum"
+      },
+      "flow_threshold_max": {
+        "name": "Flow threshold maximum"
+      },
+      "power_heat": {
+        "name": "Heat power"
+      },
+      "energy_heat": {
+        "name": "Heat energy"
+      },
+      "energy_heat_kwh": {
+        "name": "Heat energy"
+      },
+      "energy_cooling": {
+        "name": "Cooling energy"
+      },
+      "energy_cooling_kwh": {
+        "name": "Cooling energy"
+      },
+      "operation_time": {
+        "name": "Operation time"
+      },
+      "operating_time": {
+        "name": "Operating time"
+      },
+      "pulse_input_1": {
+        "name": "Pulse input 1"
+      },
+      "pulse_input_2": {
+        "name": "Pulse input 2"
+      },
+      "pulse_input_3": {
+        "name": "Pulse input 3"
+      },
+      "pulse_input_4": {
+        "name": "Pulse input 4"
+      },
+      "pressure_supply": {
+        "name": "Supply pressure"
+      },
+      "pressure_return": {
+        "name": "Return pressure"
+      },
+      "device_status": {
+        "name": "Device status"
+      },
+      "module_detached": {
+        "name": "Module detached"
+      }
+    }
+  },
+  "selector": {
+    "device_type": {
+      "options": {
+        "water_type_a": "Water meter: Pulse Module",
+        "water_type_b": "Water meter: Ultrasonic",
+        "water_type_c": "Water meter: Electronic (Type 1)",
+        "water_type_d": "Water meter: Electronic (Type 2)",
+        "water_type_e": "Water meter: Two-Tariff",
+        "heat_type_a": "Heat Meter Apartment",
+        "heat_type_b": "Heat Meter Apartment (Legacy)"
+      }
+    }
+  },
+  "title": "Pulsar meters",
+  "device": {
+    "water_type_a": {
+      "name": "Water meter: Pulse Module"
+    },
+    "water_type_b": {
+      "name": "Water meter: Ultrasonic"
+    },
+    "water_type_c": {
+      "name": "Water meter: Electronic (Type 1)"
+    },
+    "water_type_d": {
+      "name": "Water meter: Electronic (Type 2)"
+    },
+    "water_type_e": {
+      "name": "Water meter: Two-Tariff"
+    },
+    "heat_type_a": {
+      "name": "Heat Meter Apartment"
+    },
+    "heat_type_b": {
+      "name": "Heat Meter Apartment (Legacy)"
+    }
+  }
 }

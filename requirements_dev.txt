@@ -1,4 +1,5 @@
 # Requirements for Pulsar integration development
 homeassistant
+pycares<5.0.0
 pyserial
 pyserial-asyncio

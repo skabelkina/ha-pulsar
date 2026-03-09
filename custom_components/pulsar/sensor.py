@@ -1,135 +1,119 @@
 """Support for Pulsar devices."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-    SensorEntityDescription,
-    SensorStateClass,
-)
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    UnitOfTemperature,
-    UnitOfVolume,
-)
+from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import HomeAssistantPulsarData
-
-from .const import (
-    DATA_KEY_CURRENT_WATER_CONSUMPTION_CH1,
-    DATA_KEY_SYSTEM_TIME,
-    DATA_KEY_DEVICE_TEMPERATURE,
-    DEFAULT_SCAN_INTERVAL,
-    DOMAIN,
-    PULSAR_DISCOVERY_NEW
-)
-
-from .pulsardevice import PulsarDevice
-
-from .entity import BasePulsarEntity
-
-SCAN_INTERVAL = DEFAULT_SCAN_INTERVAL
+from . import HomeAssistantPulsarData, PulsarConfigEntry
+from .const import DOMAIN, MANUFACTURER
+from .coordinator import PulsarDataUpdateCoordinator
+from .device_specs import DeviceTypeMetadata
 
 
-@dataclass
-class PulsarSensorEntityDescription(SensorEntityDescription):
-    """Describes Pulsar sensor entity."""
-
-    subkey: str | None = None
-
-
-SENSORS: dict[str, tuple[PulsarSensorEntityDescription, ...]] = {
-    "pulsar-m-water": (
-        PulsarSensorEntityDescription(
-            key=DATA_KEY_CURRENT_WATER_CONSUMPTION_CH1,
-            name="Current water consumption",
-            translation_key=DATA_KEY_CURRENT_WATER_CONSUMPTION_CH1,
-            device_class=SensorDeviceClass.WATER,
-            state_class=SensorStateClass.TOTAL_INCREASING,
-            native_unit_of_measurement=UnitOfVolume.LITERS,
-            has_entity_name=True
-        ),
-        PulsarSensorEntityDescription(
-            key=DATA_KEY_SYSTEM_TIME,
-            name="System time",
-            translation_key=DATA_KEY_SYSTEM_TIME,
-            has_entity_name=True
-        ),
-        PulsarSensorEntityDescription(
-            key=DATA_KEY_DEVICE_TEMPERATURE,
-            name="Temperature of meter",
-            translation_key=DATA_KEY_DEVICE_TEMPERATURE,
-            device_class=SensorDeviceClass.TEMPERATURE,
-            state_class=SensorStateClass.MEASUREMENT,
-            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-            has_entity_name=True
+def create_sensor_descriptions(
+    metadata: DeviceTypeMetadata,
+) -> tuple[SensorEntityDescription, ...]:
+    """Create sensor descriptions from device metadata."""
+    return tuple(
+        SensorEntityDescription(
+            key=data_spec.key,
+            translation_key=data_spec.translation_key or data_spec.key,
+            device_class=data_spec.device_class,
+            state_class=data_spec.state_class,
+            native_unit_of_measurement=data_spec.unit,
+            suggested_display_precision=data_spec.display_precision,
+            entity_category=data_spec.entity_category,
+            icon=data_spec.icon,
+            has_entity_name=True,
         )
+        for data_spec in metadata.data_specs
     )
-}
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+    _hass: HomeAssistant,
+    entry: PulsarConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Pulsar sensor dynamically"""
-    hass_data: HomeAssistantPulsarData = hass.data[DOMAIN][entry.entry_id]
+    """Set up Pulsar sensor dynamically."""
+    hass_data: HomeAssistantPulsarData = entry.runtime_data
 
     @callback
-    def async_discover_device(device_ids: list[int]) -> None:
+    def async_discover_device(device_ids: list[str]) -> None:
         """Discover and add a discovered Pulsar sensor."""
         entities: list[PulsarSensorEntity] = []
         for device_id in device_ids:
-            device = hass_data.device_manager.get_device(device_id)
-            if descriptions := SENSORS.get(device._type):
-                for description in descriptions:
-                    entities.append(
-                        PulsarSensorEntity(
-                            device_id,
-                            device,
-                            description
-                        )
-                    )
+            coordinator = hass_data.coordinators.get(device_id)
+            if coordinator is None:
+                continue
+            device = coordinator.device
+            metadata = device.metadata
+            descriptions = create_sensor_descriptions(metadata)
+            entities.extend(
+                PulsarSensorEntity(coordinator, device_id, description)
+                for description in descriptions
+            )
 
         async_add_entities(entities)
 
-    async_discover_device([*hass_data.device_manager._devices])
-
-    entry.async_on_unload(
-        async_dispatcher_connect(
-            hass, PULSAR_DISCOVERY_NEW, async_discover_device)
-    )
+    async_discover_device([*hass_data.coordinators.keys()])
 
 
-class PulsarSensorEntity(BasePulsarEntity, SensorEntity):
-    """Pulsar Sensor Entity."""
+class PulsarSensorEntity(CoordinatorEntity[PulsarDataUpdateCoordinator], SensorEntity):
+    """Pulsar Sensor Entity using coordinator."""
 
     def __init__(
-            self,
-            unique_id: str,
-            pulsar_device: PulsarDevice,
-            description: PulsarSensorEntityDescription) -> None:
-        super().__init__(unique_id, pulsar_device)
-
+        self,
+        coordinator: PulsarDataUpdateCoordinator,
+        device_id: str,
+        description: SensorEntityDescription,
+    ) -> None:
+        """Initialize Pulsar sensor entity."""
+        super().__init__(coordinator)
         self.entity_description = description
-        internal_unique_id = (
-            f"{super().unique_id}.{description.key}"
-        )
-        self._attr_unique_id = internal_unique_id
-        self.entity_id = internal_unique_id
+        self._device_id = device_id
+        self._attr_unique_id = f"pulsar.{device_id}.{description.key}"
 
     @property
-    def native_value(self) -> StateType:
+    def available(self) -> bool:  # type: ignore[override]
+        """Return if entity is available."""
+        return (
+            self.coordinator.last_update_success
+            and self.coordinator.data is not None
+            and self.entity_description.key in self.coordinator.data
+        )
+
+    @property
+    def native_value(self) -> StateType:  # type: ignore[override]
         """Return the value reported by the sensor."""
-
-        # Raw value
-        value = self._pulsar_device.getdata(self.entity_description.key)
-        if value is None:
+        if self.coordinator.data is None:
             return None
+        return self.coordinator.data.get(self.entity_description.key)
 
-        return value
+    @property
+    def device_info(self) -> DeviceInfo:  # type: ignore[override]
+        """Return device information."""
+        device = self.coordinator.device
+        sw_version = self.coordinator.sw_version
+        hw_version = self.coordinator.hw_version
+
+        metadata = device.metadata
+
+        translations = self.hass.data.get(DOMAIN, {}).get("device_translations", {})
+        model_key = f"component.{DOMAIN}.device.{metadata.type_id}.name"
+        model = translations.get(model_key, metadata.model_name)
+
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            manufacturer=MANUFACTURER,
+            model=model,
+            name=device.name,
+            sw_version=str(sw_version) if sw_version is not None else None,
+            hw_version=str(hw_version) if hw_version is not None else None,
+            serial_number=str(device.serial_number),
+        )

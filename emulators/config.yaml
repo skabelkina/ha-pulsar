@@ -1,0 +1,164 @@
+# PulsarM Emulator Configuration
+
+# Water Meter Type A: Pulse Modules (Int32, modern parameters)
+water_meter_type_a:
+  port: 9601
+  address: 12345678
+  device_id: 260
+  channels:
+    volume: 1234567 # liters (Int32 format)
+  parameters:
+    environment_temp: 22 # °C (INT8)
+    battery_voltage: 3600 # mV (UINT16)
+    current_errors: 0 # UINT16
+    last_rssi: -70 # dBm (INT8)
+    last_rf_error: 0 # UINT8
+  firmware:
+    fw_number: 100
+    hw_version: 10
+    sw_version: 200
+    revision: 1
+    modification: 0
+
+# Water Meter Type B: Mechanical Meters (Int32, legacy parameters)
+water_meter_type_b:
+  port: 9602
+  address: 12345678
+  device_id: 260
+  channels:
+    volume: 1234567 # liters (Int32 format)
+  parameters:
+    battery_voltage: 3.6 # V (Float32)
+    environment_temp: 22.0 # °C (Float32)
+    current_errors: 0 # UINT8
+    daylight_saving: 0 # UINT16 (0=Off, 1=On)
+    fw_version_legacy: 100 # UINT16
+  firmware:
+    fw_number: 100
+    hw_version: 10
+    sw_version: 200
+    revision: 1
+    modification: 0
+
+# Water Meter Type C: RS485 Meters (Float32, minimal diagnostics)
+water_meter_type_c:
+  port: 9603
+  address: 12345678
+  device_id: 98
+  channels:
+    volume: 1234.567 # m³ (Float32)
+  parameters:
+    reed_switch: 0 # UINT8
+  firmware:
+    fw_number: 150
+    hw_version: 11
+    sw_version: 250
+    revision: 2
+    modification: 1
+
+# Water Meter Type D: Two-Tariff Meters (Float32, multi-channel)
+water_meter_type_d:
+  port: 9604
+  address: 12345678
+  device_id: 370
+  channels:
+    temp: 22.5 # °C (Channel 3, Float32)
+    volume_total: 567.89 # m³ (Channel 6, Float32)
+    volume_cold: 300.12 # m³ (Channel 7, Float32)
+    volume_hot: 267.77 # m³ (Channel 8, Float32)
+    flow_rate: 0.5 # m³/h (Channel 9, Float32)
+  parameters:
+    battery_voltage: 3600 # mV (UINT16)
+    environment_temp: 22 # °C (UINT8)
+    device_status: 0 # UINT8
+    current_errors: 0 # UINT32
+    operating_time: 8760 # hours (UINT32)
+  firmware:
+    fw_number: 150
+    hw_version: 11
+    sw_version: 250
+    revision: 2
+    modification: 1
+
+# Water Meter Type E: Ultrasonic (Float32, reverse volume, parameter-based flow rate)
+water_meter_type_e:
+  port: 9605
+  address: 12345678
+  device_id: 439
+  channels:
+    volume: 1234.567 # m³ (Channel 1, Float32)
+    volume_reverse: 12.345 # m³ (Channel 2, Float32)
+    error_flags: 0 # UINT32 (Channel 8, bit 3)
+  parameters:
+    flow_rate: 0.5 # m³/h (Parameter 0x0100, Float32)
+    battery_voltage: 3600 # mV (Parameter 0x0040, UINT16)
+    operating_time: 8760 # hours (Parameter 0x000A, UINT32)
+    last_rssi: -70 # dBm (Parameter 0x0402, INT8)
+  firmware:
+    fw_number: 150
+    hw_version: 11
+    sw_version: 250
+    revision: 2
+    modification: 1
+
+# Water Meter Type F: Electronic Gen 2/V24 (Float32, flow rate)
+water_meter_type_f:
+  port: 9606
+  address: 12345678
+  device_id: 439
+  channels:
+    volume: 1234.567 # m³ (Channel 1, Float32)
+    flow_rate: 0.5 # m³/h (Channel 2, Float32)
+  parameters:
+    battery_voltage: 3600 # mV (UINT16, range 1700-4000)
+    current_errors: 0 # UINT16
+    module_detached: 0 # UINT16
+    flow_threshold_min: 0.01 # m³/h (Float32)
+    flow_threshold_max: 10.0 # m³/h (Float32)
+  firmware:
+    fw_number: 150
+    hw_version: 11
+    sw_version: 250
+    revision: 2
+    modification: 1
+
+# Heat Meter (Apartment - Type A)
+heat_meter:
+  port: 9607
+  address: 87654321
+  device_id: 0x0043
+  channels:
+    volume_supply: 567.89 # m³
+    volume_return: 565.12 # m³
+    temp_supply: 75.5 # °C
+    temp_return: 45.2 # °C
+    energy_heat: 123.45 # Gcal
+    energy_cooling: 10.0 # Gcal
+    operating_time: 8760 # hours
+    error_flags: 0 # UINT32
+    pulse_input_1: 10.0 # m³
+    pulse_input_2: 20.0 # m³
+    pulse_input_3: 30.0 # m³
+    pulse_input_4: 40.0 # m³
+    pressure_supply: 0.5 # MPa
+    pressure_return: 0.4 # MPa
+  parameters:
+    battery_voltage: 3700 # mV
+    flow_rate: 0.5 # m³/h
+    temp_diff: 30.3 # °C
+    environment_temp: 20 # °C (int8)
+    power_heat: 0.5 # Gcal/h
+    last_rssi: -70 # dBm (int8)
+  firmware:
+    fw_number: 150
+    hw_version: 11
+    sw_version: 250
+    revision: 2
+    modification: 1
+
+# Archive configuration
+archives:
+  # Number of records to generate for each archive type
+  hourly_records: 24
+  daily_records: 7
+  monthly_records: 3

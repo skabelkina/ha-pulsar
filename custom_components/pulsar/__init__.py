@@ -1,71 +1,95 @@
 """Support for Pulsar meters."""
 
-import logging
-from typing import NamedTuple
+from __future__ import annotations
 
-import homeassistant.helpers.entity_registry as er
+from dataclasses import dataclass
+from datetime import timedelta
+import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import device_registry as dr, translation
 from homeassistant.helpers.device_registry import DeviceEntry
-from homeassistant.helpers.typing import ConfigType
-
-from .pulsar_manager import PulsarManager
+import homeassistant.helpers.entity_registry as er
 
 from .const import (
     CONF_DEVICE_CONFIG,
-    DATA_PULSAR,
-    DATA_PULSAR_CONFIG,
+    CONF_SCAN_INTERVAL,
+    DEFAULT_SCAN_INTERVAL,
     DOMAIN,
-    PLATFORMS
+    MANUFACTURER,
+    PLATFORMS,
 )
+from .coordinator import PulsarDataUpdateCoordinator
+from .pulsar_manager import PulsarManager
 
 UNSUB_LISTENER = "unsub_listener"
 
 
-class HomeAssistantPulsarData(NamedTuple):
-    """Pulsar data stored in the Home Assistant data object."""
+@dataclass
+class HomeAssistantPulsarData:
+    """Runtime data for Pulsar integration."""
 
     device_manager: PulsarManager
+    coordinators: dict[str, PulsarDataUpdateCoordinator]
 
 
-# Internal definitions
+type PulsarConfigEntry = ConfigEntry[HomeAssistantPulsarData]
+
+
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up Pulsar from config."""
-    hass.data[DATA_PULSAR] = {}
-
-    if DOMAIN in config:
-        conf = config[DOMAIN]
-        hass.data[DATA_PULSAR][DATA_PULSAR_CONFIG] = conf
-
-    return True
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Pulsar."""
+async def async_setup_entry(hass: HomeAssistant, entry: PulsarConfigEntry) -> bool:
+    """Set up Pulsar with connection validation."""
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN]["device_translations"] = await translation.async_get_translations(
+        hass, hass.config.language, "device"
+    )
 
     device_manager = PulsarManager(hass, entry)
 
-    hass.data[DOMAIN][entry.entry_id] = HomeAssistantPulsarData(
-        device_manager=device_manager
-    )
+    # Test connection before proceeding
+    try:
+        await hass.async_add_executor_job(device_manager.test_connection)
+    except Exception as err:
+        raise ConfigEntryNotReady(f"Unable to connect to serial device: {err}") from err
 
+    scan_interval_seconds = entry.options.get(
+        CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL.total_seconds()
+    )
+    scan_interval = timedelta(seconds=scan_interval_seconds)
+
+    coordinators: dict[str, PulsarDataUpdateCoordinator] = {}
     devices = device_manager.get_devices(None)
 
+    translations = hass.data[DOMAIN]["device_translations"]
+    
+    # Register devices in device registry
     device_registry = dr.async_get(hass)
-    for device_id in devices:
-        device = devices[device_id]
+    for device_id, device in devices.items():
+        metadata = device.metadata
+        model_key = f"component.{DOMAIN}.device.{metadata.type_id}.name"
+        model = translations.get(model_key, metadata.model_name)
+        
         device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, device_id)},
-            manufacturer="Pulsar",
+            manufacturer=MANUFACTURER,
             name=device.name,
-            model=device._type
+            model=model,
         )
+
+        coordinator = PulsarDataUpdateCoordinator(
+            hass, device, device_id, scan_interval=scan_interval
+        )
+        await coordinator.async_config_entry_first_refresh()
+        coordinators[device_id] = coordinator
+
+    entry.runtime_data = HomeAssistantPulsarData(
+        device_manager=device_manager, coordinators=coordinators
+    )
 
     entry.async_on_unload(entry.add_update_listener(async_update_listener))
 
@@ -80,10 +104,18 @@ async def async_update_listener(hass: HomeAssistant, config_entry: ConfigEntry):
 
 
 async def async_remove_config_entry_device(
-    hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry
+    hass: HomeAssistant, config_entry: PulsarConfigEntry, device_entry: DeviceEntry
 ) -> bool:
     """Remove a config entry from a device."""
-    dev_id = list(device_entry.identifiers)[0][1]
+    dev_id = next(iter(device_entry.identifiers))[1]
+
+    # Stop and remove coordinator if it exists
+    if config_entry.runtime_data and dev_id in config_entry.runtime_data.coordinators:
+        coordinator = config_entry.runtime_data.coordinators[dev_id]
+        await coordinator.async_shutdown()
+        config_entry.runtime_data.coordinators.pop(dev_id)
+
+    # Remove entities
     ent_reg = er.async_get(hass)
     entities = {
         ent.unique_id: ent.entity_id
@@ -93,31 +125,40 @@ async def async_remove_config_entry_device(
     for entity_id in entities.values():
         ent_reg.async_remove(entity_id)
 
-    if dev_id not in config_entry.data[CONF_DEVICE_CONFIG]:
+    # Remove device from device registry
+    device_registry = dr.async_get(hass)
+    device_registry.async_remove_device(device_entry.id)
+
+    # Remove device from config entry data if present
+    if dev_id in config_entry.data[CONF_DEVICE_CONFIG]:
+        new_data = config_entry.data.copy()
+        new_data[CONF_DEVICE_CONFIG].pop(dev_id)
+        hass.config_entries.async_update_entry(
+            config_entry,
+            data=new_data,
+        )
+        _LOGGER.info("Device %s removed from config entry.", dev_id)
+    else:
         _LOGGER.info(
             "Device %s not found in config entry: finalizing device removal", dev_id
         )
-        return True
-
-    new_data = config_entry.data.copy()
-    new_data[CONF_DEVICE_CONFIG].pop(dev_id)
-
-    hass.config_entries.async_update_entry(
-        config_entry,
-        data=new_data,
-    )
-
-    _LOGGER.info("Device %s removed.", dev_id)
 
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: PulsarConfigEntry) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
+    if (
+        unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    ) and entry.runtime_data:
+        # Clean up coordinators
+        for coordinator in entry.runtime_data.coordinators.values():
+            await coordinator.async_shutdown()
 
-        if not hass.config_entries.async_entries(DOMAIN):
-            hass.data.pop(DOMAIN)
+        # Disconnect the connector in an executor to avoid blocking the event loop
+        if entry.runtime_data.device_manager is not None:
+            await hass.async_add_executor_job(
+                entry.runtime_data.device_manager.disconnect
+            )
 
     return unload_ok

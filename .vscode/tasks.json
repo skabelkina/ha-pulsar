@@ -1,0 +1,100 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Home Assistant: Run",
+      "type": "shell",
+      "command": "hass",
+      "args": ["-c", "config"],
+      "options": {
+        "env": {
+          "PYTHONASYNCIODEBUG": "1"
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false
+      },
+      "runOptions": {
+        "runOn": "default"
+      },
+      "group": {
+        "kind": "none",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "Home Assistant: Run (Debug)",
+      "type": "shell",
+      "command": "hass",
+      "args": ["--debug", "-c", "config"],
+      "options": {
+        "env": {
+          "PYTHONASYNCIODEBUG": "1"
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false
+      },
+      "runOptions": {
+        "runOn": "default"
+      },
+      "group": {
+        "kind": "none",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "Home Assistant: Run (Skip Pip)",
+      "type": "shell",
+      "command": "hass",
+      "args": ["--skip-pip", "-c", "config"],
+      "options": {
+        "env": {
+          "PYTHONASYNCIODEBUG": "1"
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false
+      },
+      "runOptions": {
+        "runOn": "default"
+      },
+      "group": {
+        "kind": "none",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "Emulators: Run All",
+      "type": "shell",
+      "command": "python3",
+      "args": ["emulators/run_all.py"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true,
+        "clear": true
+      },
+      "runOptions": {
+        "runOn": "default"
+      },
+      "group": {
+        "kind": "none",
+        "isDefault": false
+      }
+    }
+  ]
+}
