@@ -9,7 +9,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, translation
 from homeassistant.helpers.device_registry import DeviceEntry
 import homeassistant.helpers.entity_registry as er
 
@@ -38,12 +38,16 @@ class HomeAssistantPulsarData:
 type PulsarConfigEntry = ConfigEntry[HomeAssistantPulsarData]
 
 
-# Internal definitions
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: PulsarConfigEntry) -> bool:
     """Set up Pulsar with connection validation."""
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN]["device_translations"] = await translation.async_get_translations(
+        hass, hass.config.language, "device"
+    )
+
     device_manager = PulsarManager(hass, entry)
 
     # Test connection before proceeding
@@ -60,7 +64,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: PulsarConfigEntry) -> bo
     coordinators: dict[str, PulsarDataUpdateCoordinator] = {}
     devices = device_manager.get_devices(None)
 
+    translations = hass.data[DOMAIN]["device_translations"]
+    
+    # Register devices in device registry
+    device_registry = dr.async_get(hass)
     for device_id, device in devices.items():
+        metadata = device.metadata
+        model_key = f"component.{DOMAIN}.device.{metadata.type_id}.name"
+        model = translations.get(model_key, metadata.model_name)
+        
+        device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={(DOMAIN, device_id)},
+            manufacturer=MANUFACTURER,
+            name=device.name,
+            model=model,
+        )
+
         coordinator = PulsarDataUpdateCoordinator(
             hass, device, device_id, scan_interval=scan_interval
         )
@@ -70,17 +90,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: PulsarConfigEntry) -> bo
     entry.runtime_data = HomeAssistantPulsarData(
         device_manager=device_manager, coordinators=coordinators
     )
-
-    # Register devices in device registry
-    device_registry = dr.async_get(hass)
-    for device_id, device in devices.items():
-        device_registry.async_get_or_create(
-            config_entry_id=entry.entry_id,
-            identifiers={(DOMAIN, device_id)},
-            manufacturer=MANUFACTURER,
-            name=device.name,
-            model=device.metadata.type_id,
-        )
 
     entry.async_on_unload(entry.add_update_listener(async_update_listener))
 

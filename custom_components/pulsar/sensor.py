@@ -103,10 +103,15 @@ class PulsarSensorEntity(CoordinatorEntity[PulsarDataUpdateCoordinator], SensorE
         hw_version = self.coordinator.hw_version
 
         metadata = device.metadata
+
+        translations = self.hass.data.get(DOMAIN, {}).get("device_translations", {})
+        model_key = f"component.{DOMAIN}.device.{metadata.type_id}.name"
+        model = translations.get(model_key, metadata.model_name)
+
         return DeviceInfo(
             identifiers={(DOMAIN, self._device_id)},
             manufacturer=MANUFACTURER,
-            model=metadata.model_name,
+            model=model,
             name=device.name,
             sw_version=str(sw_version) if sw_version is not None else None,
             hw_version=str(hw_version) if hw_version is not None else None,

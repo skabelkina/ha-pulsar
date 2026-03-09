@@ -16,6 +16,11 @@ from .const import (
     LEN_SIZE,
     MAX_REQUEST_ID,
     SERVICE_SIZE,
+    EPSILON,
+    UNAVAILABLE_FLOAT_MARKER,
+    FUNCTION_READ_CHANNELS,
+    ERROR_MESSAGES,
+    ERROR_RESPONSE_FUNC_CODE,
 )
 from .device_specs import DataSpec, DevicePropertySpec, DeviceTypeMetadata
 from .exceptions import (
@@ -223,10 +228,14 @@ class PulsarDevice:
         expected_response_size = response_size
 
         response = self._connector.send(message, response_size)
-
+        
+        if len(response) >= 5 and response[4] == ERROR_RESPONSE_FUNC_CODE:
+            return response
+    
         self.check_response(response, expected_response_size, addr, request_id)
 
         return response
+
 
     def send_payload(
         self,
@@ -255,6 +264,12 @@ class PulsarDevice:
         """
         request = self.prepare_request(payload, function, addr, request_id)
         response = self.send_request(request, expected_payload_size + SERVICE_SIZE)
+        
+        if len(response) >= 5 and response[4] == ERROR_RESPONSE_FUNC_CODE:
+            error_code = response[6] if len(response) > 6 else 0
+            error_msg = ERROR_MESSAGES.get(error_code, f"Unknown error code: 0x{error_code:02X}")
+            raise PulsarProtocolError(f"Device returned error: {error_msg}")
+        
         start_ind = ADDR_SIZE + FUNC_SIZE + LEN_SIZE
         end_ind = 0 - ID_SIZE - CRC_SIZE
         return response[start_ind:end_ind]
@@ -433,37 +448,76 @@ class PulsarDevice:
                 self.next_request_id(),
                 spec.response_size,
             )
-            value = self._parse_response(response_payload, spec.data_type)
+            value = self._parse_response(response_payload, spec.data_type, spec)
             if spec.data_type == "datetime":
                 return value
-            if isinstance(value, float) and not math.isfinite(value):
-                _LOGGER.debug(
-                    "Sensor %s returned non-finite value (NaN/Inf), treating as unavailable",
-                    spec.key,
-                )
-                return None
 
             scale_factor = getattr(spec, "scale_factor", 1.0)
             return self._apply_scale_factor(value, scale_factor)
+        except PulsarProtocolError as err:
+            if spec.function_code == FUNCTION_READ_CHANNELS:
+                data_type = "channel"
+            else:
+                data_type = "parameter"
+            _LOGGER.warning(
+                "Device %s (%s) returned error for %s %s (0x%04X): %s",
+                self._name,
+                self._metadata.model_name,
+                data_type,
+                spec.key,
+                spec.address,
+                err,
+            )
+            return None
         except (
             ConnectionError,
             TimeoutError,
             OSError,
-            PulsarProtocolError,
             PulsarFrameError,
         ) as err:
+            if spec.function_code == FUNCTION_READ_CHANNELS:
+                data_type = "channel"
+            else:
+                data_type = "parameter"
             _LOGGER.warning(
-                "Failed to read %s (addr: 0x%04X, func: 0x%02X) from device %s: %s",
+                "Device %s (%s) failed to read %s %s (addr: 0x%04X, func: 0x%02X): %s",
+                self._name,
+                self._metadata.model_name,
+                data_type,
                 spec.key,
                 spec.address,
                 spec.function_code,
-                self._serial_number,
                 err,
             )
             return None
 
+    def _is_unavailable_float(
+        self, value: float, spec: DataSpec | DevicePropertySpec
+    ) -> bool:
+        """Check if float value indicates unavailable data"""
+        
+        if not math.isfinite(value):
+            _LOGGER.warning(
+                "Device %s (%s) sensor %s returned non-finite value (NaN/Inf), treating as unavailable",
+                self._name,
+                self._metadata.model_name,
+                spec.key,
+            )
+            return True
+        
+        if abs(abs(value) - UNAVAILABLE_FLOAT_MARKER) < EPSILON:
+            _LOGGER.warning(
+                "Device %s (%s) sensor %s returned special float value %f indicating unavailable data",
+                self._name,
+                self._metadata.model_name,
+                spec.key,
+                value
+            )
+            return True
+        return False
+        
     def _parse_response(
-        self, response_payload: bytes, data_type: str
+        self, response_payload: bytes, data_type: str, spec: DataSpec | DevicePropertySpec
     ) -> int | float | str | datetime.datetime | None:
         """Parse response payload based on data type.
 
@@ -473,13 +527,20 @@ class PulsarDevice:
 
         Returns:
             Parsed value or None if type is unsupported.
-
+            
+        Note:
+            For float32, special values like -999.0 and 999.0
+            are treated as "unavailable" and return None.
         """
+        
+        if data_type == "float32":
+            value = self.read_float_from_hex(response_payload, 4, 0, False)
+            if value is None or self._is_unavailable_float(value, spec):
+                return None
+            return value
         if data_type == "int32":
             value = self.read_int_from_hex(response_payload, 4, 0, False)
-            return self._convert_to_signed(value, 32)
-        if data_type == "float32":
-            return self.read_float_from_hex(response_payload, 4, 0, False)
+            return self._convert_to_signed(value, 32)    
         if data_type == "uint32":
             return self.read_int_from_hex(response_payload, 4, 0, False)
         if data_type == "uint64":
@@ -496,7 +557,7 @@ class PulsarDevice:
         if data_type == "datetime":
             return self._parse_datetime(response_payload)
         return None
-
+        
     def _parse_datetime(self, response_payload: bytes) -> datetime.datetime:
         """Parse datetime from response payload.
 

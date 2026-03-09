@@ -21,12 +21,11 @@ from homeassistant.const import (
     UnitOfVolumeFlowRate,
 )
 
-FUNCTION_READ_CHANNELS = 0x01
-FUNCTION_READ_ARCHIVE = 0x06
-FUNCTION_READ_SYSTEM_TIME = 0x04
-FUNCTION_WRITE_SYSTEM_TIME = 0x05
-FUNCTION_READ_PARAMETERS = 0x0A
-FUNCTION_WRITE_PARAMETERS = 0x0B
+from .const import (
+    FUNCTION_READ_CHANNELS,
+    FUNCTION_READ_SYSTEM_TIME,
+    FUNCTION_READ_PARAMETERS,
+)
 
 
 class DeviceType(enum.StrEnum):
@@ -37,7 +36,6 @@ class DeviceType(enum.StrEnum):
     WATER_TYPE_C = "water_type_c"
     WATER_TYPE_D = "water_type_d"
     WATER_TYPE_E = "water_type_e"
-    WATER_TYPE_F = "water_type_f"
     HEAT_TYPE_A = "heat_type_a"
     HEAT_TYPE_B = "heat_type_b"
 
@@ -351,16 +349,15 @@ def diagnostic_sensor(
 
 WATER_TYPE_A_METADATA = DeviceTypeMetadata(
     type_id=DeviceType.WATER_TYPE_A,
-    model_name="Water: Pulse Module (IoT/Mini)",
+    model_name="Water meter: Pulse Module",
     data_specs=(
         volume_sensor(0x01, "volume", "int32"),
         battery_voltage_sensor(0x0041),
         temperature_sensor(0x0040, "temperature", "int8"),
         diagnostic_sensor(0x0007, "error_flags", "uint16"),
         diagnostic_sensor(
-            0x000E, "last_rssi", "int8", unit=SIGNAL_STRENGTH_DECIBELS_MILLIWATT
+            0x0000, "device_date_time", "datetime", FUNCTION_READ_SYSTEM_TIME
         ),
-        diagnostic_sensor(0x0049, "last_rf_error", "uint8"),
     ),
     property_specs=(device_property_sensor(0x0002, "firmware_info", "uint64"),),
     property_parser=parse_firmware_info,
@@ -368,70 +365,18 @@ WATER_TYPE_A_METADATA = DeviceTypeMetadata(
 
 WATER_TYPE_B_METADATA = DeviceTypeMetadata(
     type_id=DeviceType.WATER_TYPE_B,
-    model_name="Water: Mechanical",
-    data_specs=(
-        volume_sensor(0x01, "volume", "int32"),
-        battery_voltage_sensor(0x000A, "float32", 1.0),
-        temperature_sensor(0x000B, "device_temperature", "float32"),
-        diagnostic_sensor(0x0006, "error_flags", "uint8"),
-        diagnostic_sensor(
-            0x0000, "device_date_time", "datetime", FUNCTION_READ_SYSTEM_TIME
-        ),
-    ),
-    property_specs=(device_property_sensor(0x0005, "sw_version", "uint16"),),
-    property_parser=None,
-)
-
-WATER_TYPE_C_METADATA = DeviceTypeMetadata(
-    type_id=DeviceType.WATER_TYPE_C,
-    model_name="Water: RS485",
-    data_specs=(
-        volume_sensor(0x01, "volume", "float32", scale_factor=1000.0),
-        diagnostic_sensor(0x001C, "reed_switch", "uint8"),
-        diagnostic_sensor(
-            0x0000, "device_date_time", "datetime", FUNCTION_READ_SYSTEM_TIME
-        ),
-    ),
-    property_specs=(device_property_sensor(0x0005, "sw_version", "uint16"),),
-    property_parser=None,
-)
-
-WATER_TYPE_D_METADATA = DeviceTypeMetadata(
-    type_id=DeviceType.WATER_TYPE_D,
-    model_name="Water: Two-Tariff",
-    data_specs=(
-        temperature_sensor(0x04, "temperature", "float32", FUNCTION_READ_CHANNELS),
-        volume_sensor(0x20, "volume_total", "float32", scale_factor=1000.0),
-        volume_sensor(0x40, "volume_cold", "float32", scale_factor=1000.0),
-        volume_sensor(0x80, "volume_hot", "float32", scale_factor=1000.0),
-        flow_rate_sensor(0x100, FUNCTION_READ_CHANNELS, scale_factor=1000.0),
-        battery_voltage_sensor(0x000A),
-        temperature_sensor(0x000B, "environment_temp", "uint8"),
-        diagnostic_sensor(0x0008, "device_status", "uint8"),
-        duration_sensor(0x000C, "operating_time"),
-        diagnostic_sensor(0x0006, "error_flags", "uint32"),
-    ),
-    property_specs=(device_property_sensor(0x0002, "firmware_info", "uint64"),),
-    property_parser=parse_firmware_info,
-)
-
-WATER_TYPE_E_METADATA = DeviceTypeMetadata(
-    type_id=DeviceType.WATER_TYPE_E,
-    model_name="Water: Ultrasonic",
+    model_name="Water meter: Ultrasonic",
     data_specs=(
         volume_sensor(0x01, "volume", "float32", scale_factor=1000.0),
         volume_sensor(0x02, "volume_reverse", "float32", scale_factor=1000.0),
         flow_rate_sensor(0x0100, FUNCTION_READ_PARAMETERS, scale_factor=1000.0),
+        volume_sensor(0x100, "pulse_input_1", "float32", scale_factor=1000.0),
+        volume_sensor(0x200, "pulse_input_2", "float32", scale_factor=1000.0),
+        volume_sensor(0x400, "pulse_input_3", "float32", scale_factor=1000.0),
+        volume_sensor(0x800, "pulse_input_4", "float32", scale_factor=1000.0),
         battery_voltage_sensor(0x0040),
         duration_sensor(0x000A, "operating_time"),
-        diagnostic_sensor(0x08, "error_flags", "uint32", FUNCTION_READ_CHANNELS),
-        diagnostic_sensor(
-            0x0402,
-            "last_rssi",
-            "int8",
-            FUNCTION_READ_PARAMETERS,
-            unit=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
-        ),
+        diagnostic_sensor(0x80, "error_flags", "uint32", FUNCTION_READ_CHANNELS),
         diagnostic_sensor(
             0x0000, "device_date_time", "datetime", FUNCTION_READ_SYSTEM_TIME
         ),
@@ -440,9 +385,9 @@ WATER_TYPE_E_METADATA = DeviceTypeMetadata(
     property_parser=parse_firmware_info,
 )
 
-WATER_TYPE_F_METADATA = DeviceTypeMetadata(
-    type_id=DeviceType.WATER_TYPE_F,
-    model_name="Water: Electronic",
+WATER_TYPE_C_METADATA = DeviceTypeMetadata(
+    type_id=DeviceType.WATER_TYPE_C,
+    model_name="Water meter: Electronic (Type 1)",
     data_specs=(
         volume_sensor(0x01, "volume", "float32", scale_factor=1000.0),
         flow_rate_sensor(0x02, scale_factor=1000.0),
@@ -462,6 +407,50 @@ WATER_TYPE_F_METADATA = DeviceTypeMetadata(
             unit=UnitOfVolumeFlowRate.LITERS_PER_HOUR,
             scale_factor=1000.0,
         ),
+        diagnostic_sensor(
+            0x0000, "device_date_time", "datetime", FUNCTION_READ_SYSTEM_TIME
+        ),
+    ),
+    property_specs=(device_property_sensor(0x0002, "firmware_info", "uint64"),),
+    property_parser=parse_firmware_info,
+)
+
+WATER_TYPE_D_METADATA = DeviceTypeMetadata(
+    type_id=DeviceType.WATER_TYPE_D,
+    model_name="Water meter: Electronic (Type 2)",
+    data_specs=(
+        volume_sensor(0x01, "volume", "float32", scale_factor=1000.0),
+        flow_rate_sensor(0x0100, FUNCTION_READ_PARAMETERS, scale_factor=1000.0),
+        battery_voltage_sensor(0x0040),
+        diagnostic_sensor(0x80, "error_flags", "uint32"),
+        diagnostic_sensor(
+            0x0000, "device_date_time", "datetime", FUNCTION_READ_SYSTEM_TIME
+        ),
+    ),
+    property_specs=(device_property_sensor(0x0002, "firmware_info", "uint64"),),
+    property_parser=parse_firmware_info,
+)
+
+WATER_TYPE_E_METADATA = DeviceTypeMetadata(
+    type_id=DeviceType.WATER_TYPE_E,
+    model_name="Water meter: Two-Tariff",
+    data_specs=(
+        temperature_sensor(0x04, "temperature", "float32", FUNCTION_READ_CHANNELS),
+        volume_sensor(0x20, "volume_total", "float32", scale_factor=1000.0),
+        volume_sensor(0x40, "volume_cold", "float32", scale_factor=1000.0),
+        volume_sensor(0x80, "volume_hot", "float32", scale_factor=1000.0),
+        flow_rate_sensor(0x100, FUNCTION_READ_CHANNELS, scale_factor=1000.0),
+        volume_sensor(0x200, "pulse_input_1", "float32", scale_factor=1000.0),
+        volume_sensor(0x400, "pulse_input_2", "float32", scale_factor=1000.0),
+        volume_sensor(0x800, "pulse_input_3", "float32", scale_factor=1000.0),
+        volume_sensor(0x1000, "pulse_input_4", "float32", scale_factor=1000.0),
+        battery_voltage_sensor(0x000A),
+        diagnostic_sensor(0x0008, "device_status", "uint8"),
+        duration_sensor(0x000C, "operating_time"),
+        diagnostic_sensor(0x0006, "error_flags", "uint32"),
+        diagnostic_sensor(
+            0x0000, "device_date_time", "datetime", FUNCTION_READ_SYSTEM_TIME
+        ),
     ),
     property_specs=(device_property_sensor(0x0002, "firmware_info", "uint64"),),
     property_parser=parse_firmware_info,
@@ -469,7 +458,7 @@ WATER_TYPE_F_METADATA = DeviceTypeMetadata(
 
 HEAT_TYPE_A_METADATA = DeviceTypeMetadata(
     type_id=DeviceType.HEAT_TYPE_A,
-    model_name="Heat Meter (Apartment)",
+    model_name="Heat Meter Apartment",
     data_specs=(
         volume_sensor(0x01, "volume_supply", "float32", scale_factor=1000.0),
         volume_sensor(0x02, "volume_return", "float32", scale_factor=1000.0),
@@ -479,14 +468,12 @@ HEAT_TYPE_A_METADATA = DeviceTypeMetadata(
         energy_sensor(0x20, "energy_cooling"),
         duration_sensor(0x40, "operating_time", FUNCTION_READ_CHANNELS),
         diagnostic_sensor(0x80, "error_flags", "uint32", FUNCTION_READ_CHANNELS),
+        battery_voltage_sensor(0x0040, "uint16"),
+        flow_rate_sensor(0x0100, FUNCTION_READ_PARAMETERS, scale_factor=1000.0),
         volume_sensor(0x100, "pulse_input_1", "float32", scale_factor=1000.0),
         volume_sensor(0x200, "pulse_input_2", "float32", scale_factor=1000.0),
         volume_sensor(0x400, "pulse_input_3", "float32", scale_factor=1000.0),
         volume_sensor(0x800, "pulse_input_4", "float32", scale_factor=1000.0),
-        pressure_sensor(0x1000, "pressure_supply", scale_factor=1000.0),
-        pressure_sensor(0x2000, "pressure_return", scale_factor=1000.0),
-        battery_voltage_sensor(0x0040, "uint16"),
-        flow_rate_sensor(0x0100, FUNCTION_READ_PARAMETERS, scale_factor=1000.0),
         temperature_sensor(0x0130, "temp_diff", "float32", FUNCTION_READ_PARAMETERS),
         temperature_sensor(
             0x0131, "environment_temp", "int8", FUNCTION_READ_PARAMETERS
@@ -498,12 +485,10 @@ HEAT_TYPE_A_METADATA = DeviceTypeMetadata(
             function_code=FUNCTION_READ_PARAMETERS,
         ),
         diagnostic_sensor(
-            0x0402,
-            "last_rssi",
-            "int8",
-            FUNCTION_READ_PARAMETERS,
-            unit=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+            0x0000, "device_date_time", "datetime", FUNCTION_READ_SYSTEM_TIME
         ),
+        pressure_sensor(0x1000, "pressure_supply", scale_factor=1000.0),
+        pressure_sensor(0x2000, "pressure_return", scale_factor=1000.0),
     ),
     property_specs=(device_property_sensor(0x0002, "firmware_info", "uint64"),),
     property_parser=parse_firmware_info,
@@ -511,7 +496,7 @@ HEAT_TYPE_A_METADATA = DeviceTypeMetadata(
 
 HEAT_TYPE_B_METADATA = DeviceTypeMetadata(
     type_id=DeviceType.HEAT_TYPE_B,
-    model_name="Heat Meter (Compact/Ultrasonic)",
+    model_name="Heat Meter Apartment (Legacy)",
     data_specs=(
         temperature_sensor(0x04, "temp_supply", "float32", FUNCTION_READ_CHANNELS),
         temperature_sensor(0x08, "temp_return", "float32", FUNCTION_READ_CHANNELS),
@@ -529,9 +514,13 @@ HEAT_TYPE_B_METADATA = DeviceTypeMetadata(
         pressure_sensor(0x200000, "pressure_supply", scale_factor=1000.0),
         pressure_sensor(0x400000, "pressure_return", scale_factor=1000.0),
         diagnostic_sensor(0x10000000, "error_flags", "uint32", FUNCTION_READ_CHANNELS),
+        diagnostic_sensor(
+            0x0000, "device_date_time", "datetime", FUNCTION_READ_SYSTEM_TIME
+        ),
+        battery_voltage_sensor(0x000A),
     ),
-    property_specs=(device_property_sensor(0x0005, "sw_version", "uint16"),),
-    property_parser=None,
+    property_specs=(device_property_sensor(0x0002, "firmware_info", "uint64"),),
+    property_parser=parse_firmware_info,
 )
 
 DEVICE_TYPE_REGISTRY: dict[str, DeviceTypeMetadata] = {
@@ -540,7 +529,6 @@ DEVICE_TYPE_REGISTRY: dict[str, DeviceTypeMetadata] = {
     DeviceType.WATER_TYPE_C: WATER_TYPE_C_METADATA,
     DeviceType.WATER_TYPE_D: WATER_TYPE_D_METADATA,
     DeviceType.WATER_TYPE_E: WATER_TYPE_E_METADATA,
-    DeviceType.WATER_TYPE_F: WATER_TYPE_F_METADATA,
     DeviceType.HEAT_TYPE_A: HEAT_TYPE_A_METADATA,
     DeviceType.HEAT_TYPE_B: HEAT_TYPE_B_METADATA,
 }

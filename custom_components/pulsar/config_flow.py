@@ -10,6 +10,7 @@ import uuid
 import serial.tools.list_ports
 import voluptuous as vol
 
+from homeassistant.helpers import selector
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
@@ -63,15 +64,16 @@ class FlowState:
     editing_mode: bool = False
 
 
-def get_device_type_options() -> dict[str, str]:
-    """Get device type options for dropdown using model_name from device specs."""
-    options: dict[str, str] = {}
+def get_device_type_options() -> list[selector.SelectOptionDict]:
+    """Get device type options for dropdown with translation support."""
+    options = []
     for device_type in DeviceType:
-        metadata = DEVICE_TYPE_REGISTRY.get(device_type)
-        if metadata:
-            options[device_type.value] = metadata.model_name
-        else:
-            options[device_type.value] = device_type.value
+        options.append(
+            selector.SelectOptionDict(
+                value=device_type.value,
+                label=device_type.value,
+            )
+        )
     return options
 
 
@@ -88,8 +90,6 @@ def create_device_config_schema(
     defaults: DeviceConfigDict | None = None,
 ) -> vol.Schema:
     """Create device config schema with device type options."""
-    device_type_options = get_device_type_options()
-
     if defaults is None:
         defaults = get_default_device_config()
 
@@ -99,8 +99,12 @@ def create_device_config_schema(
             vol.Optional(
                 CONF_SERIAL_ID, default=defaults[CONF_SERIAL_ID]
             ): cv.positive_int,
-            vol.Optional(CONF_TYPE, default=defaults[CONF_TYPE]): vol.In(
-                device_type_options
+            vol.Optional(CONF_TYPE, default=defaults[CONF_TYPE]): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=get_device_type_options(),
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    translation_key="device_type",
+                )
             ),
         }
     )

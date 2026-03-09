@@ -217,18 +217,6 @@
       "pressure_return": {
         "name": "Return pressure"
       },
-      "last_rssi": {
-        "name": "Last RSSI"
-      },
-      "rssi": {
-        "name": "RSSI"
-      },
-      "last_rf_error": {
-        "name": "Last RF error"
-      },
-      "reed_switch": {
-        "name": "Reed switch"
-      },
       "device_status": {
         "name": "Device status"
       },
@@ -240,15 +228,38 @@
   "selector": {
     "device_type": {
       "options": {
-        "water_type_a": "Water: Pulse Module (IoT/Mini)",
-        "water_type_b": "Water: Mechanical",
-        "water_type_c": "Water: RS485",
-        "water_type_d": "Water: Two-Tariff",
-        "water_type_e": "Water: Ultrasonic",
-        "water_type_f": "Water: Electronic",
-        "heat_type_a": "Heat Meter (Apartment)",
-        "heat_type_b": "Heat Meter (Compact/Ultrasonic)"
+        "water_type_a": "Water meter: Pulse Module",
+        "water_type_b": "Water meter: Ultrasonic",
+        "water_type_c": "Water meter: Electronic (Type 1)",
+        "water_type_d": "Water meter: Electronic (Type 2)",
+        "water_type_e": "Water meter: Two-Tariff",
+        "heat_type_a": "Heat Meter Apartment",
+        "heat_type_b": "Heat Meter Apartment (Legacy)"
       }
+    }
+  },
+  "title": "Pulsar meters",
+  "device": {
+    "water_type_a": {
+      "name": "Water meter: Pulse Module"
+    },
+    "water_type_b": {
+      "name": "Water meter: Ultrasonic"
+    },
+    "water_type_c": {
+      "name": "Water meter: Electronic (Type 1)"
+    },
+    "water_type_d": {
+      "name": "Water meter: Electronic (Type 2)"
+    },
+    "water_type_e": {
+      "name": "Water meter: Two-Tariff"
+    },
+    "heat_type_a": {
+      "name": "Heat Meter Apartment"
+    },
+    "heat_type_b": {
+      "name": "Heat Meter Apartment (Legacy)"
     }
   }
 }
